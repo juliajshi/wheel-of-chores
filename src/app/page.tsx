@@ -1,103 +1,133 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import SpinningWheel from '@/components/SpinningWheel';
+import WinnerModal from '@/components/WinnerModal';
+import { Segment, Winner } from '@/types';
+
+const LOCAL_STORAGE_KEY = 'spinningWheelSegments';
+const SPIN_DURATION = 3000;
+
+const randomColor = () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`;
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [rotation, setRotation] = useState(0);
+  const [spinning, setSpinning] = useState(false);
+  const [newLabel, setNewLabel] = useState('0');
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [winner, setWinner] = useState<Winner | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+  // Load saved segments
+  useEffect(() => {
+    const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (saved) {
+      try {
+        setSegments(JSON.parse(saved));
+      } catch {
+        setSegments([]);
+      }
+    }
+  }, []);
+
+  // Save segments on change
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(segments));
+  }, [segments]);
+
+  const spin = () => {
+    if (spinning || segments.length === 0) return;
+
+    setSpinning(true);
+    setWinner(null);
+
+    const extraSpin = Math.floor(Math.random() * 1080) + 1080;
+    const newRotation = rotation + extraSpin;
+
+    setRotation(newRotation);
+
+    setTimeout(() => {
+      const normalized = newRotation % 360;
+      const anglePerSegment = 360 / segments.length;
+      const index = Math.floor(((360 - normalized) % 360) / anglePerSegment);
+      setWinner({ label: segments[index].label, index });
+      setSpinning(false);
+    }, SPIN_DURATION);
+  };
+
+  const addSegment = () => {
+    if (newLabel.trim()) {
+      const newSegment = {
+        label: newLabel.trim(),
+        color: randomColor(),
+      };
+      setSegments([...segments, newSegment]);
+      setNewLabel('');
+    }
+  };
+
+  const deleteWinner = () => {
+    if (winner) {
+      const updated = [...segments];
+      updated.splice(winner.index, 1);
+      setSegments(updated);
+      setWinner(null);
+    }
+  };
+
+  const deleteAllSegments = () => {
+    setSegments([]);
+    setWinner(null);
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  };
+
+  return (
+    <div className='flex items-center justify-center min-h-screen bg-gray-100'>
+      <div className='absolute top-[calc(50%-256px)] z-10'>
+        <div className='w-0 h-0 border-l-8 border-r-8 border-b-[16px] border-l-transparent border-r-transparent border-b-black' />
+      </div>
+
+      <div className='relative'>
+        <SpinningWheel segments={segments} rotation={rotation} />
+
+        <button
+          onClick={spin}
+          disabled={spinning}
+          className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500 text-white p-4 rounded-full shadow-md hover:bg-red-600 transition'
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {spinning ? 'Spinning...' : 'Spin'}
+        </button>
+      </div>
+
+      <div className='flex space-x-2'>
+        <input
+          type='text'
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder='New segment label'
+          className='px-3 py-2 border rounded w-48'
+        />
+        <button
+          onClick={addSegment}
+          className='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600'
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Add Segment
+        </button>
+      </div>
+
+      <button
+        onClick={deleteAllSegments}
+        className='text-sm text-red-600 underline'
+      >
+        Delete All Segments
+      </button>
+
+      {winner && (
+        <WinnerModal
+          winner={winner}
+          onClose={() => setWinner(null)}
+          onDelete={deleteWinner}
+        />
+      )}
     </div>
   );
 }
